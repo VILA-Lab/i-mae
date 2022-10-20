@@ -5,7 +5,7 @@
 [`Website`](https://zhiqiangshen.com/projects/i-mae/) | [`arXiv`](https://arxiv.org/abs/) | [`BibTeX`](#citation)
 
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github)  
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/vision-learning-acceleration-lab/i-mae/blob/main/i-MAE_demo.ipynb)  
 
 ![i-MAE2](https://user-images.githubusercontent.com/52997677/196735725-496592d3-5883-4db4-ba34-04d0a8dab535.svg)
 
@@ -21,7 +21,7 @@ We provide a PyTorch/GPU based implementation of our technical report [i-MAE: Ar
 
 ### Visualization demo
 
-Please visit our [website](https://zhiqiangshen.com/projects/i-mae/), or run our visualization demo with [Colab notebook](https://colab.research.google.com/github/facebookresearch/mae/blob/main/demo/mae_visualize.ipynb) (no GPU needed):
+Please visit our interactive demo at [website](https://zhiqiangshen.com/projects/i-mae/), or run our visualization demo with [Colab notebook](https://colab.research.google.com/github/vision-learning-acceleration-lab/i-mae/blob/main/i-MAE_demo.ipynb) (no GPU needed):
 
 ### Acknowledgement
 
