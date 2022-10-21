@@ -11,7 +11,7 @@
 
 
 We provide a PyTorch/GPU based implementation of our technical report [i-MAE: Are Latent Representations in Masked Autoencoders Linearly Separable?
-]()
+](https://arxiv.org/abs/2210.11470)
 
 ### Catalog
 - [x] Pretrain demo with Colab
@@ -36,14 +36,10 @@ This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for detai
 If you find this repository helpful, please consider citing our work:
 
 ```
-@misc{https://doi.org/10.48550/arxiv.2210.11470,
-  doi = {10.48550/ARXIV.2210.11470},
-  url = {https://arxiv.org/abs/2210.11470},
+@article{zhang2022i-mae,
+  title={i-MAE: Are Latent Representations in Masked Autoencoders Linearly Separable?},
   author = {Zhang, Kevin and Shen, Zhiqiang},
-  keywords = {Computer Vision and Pattern Recognition (cs.CV), Artificial Intelligence (cs.AI), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {i-MAE: Are Latent Representations in Masked Autoencoders Linearly Separable?},
-  publisher = {arXiv},
-  year = {2022},
-  copyright = {Creative Commons Attribution 4.0 International}
+  journal={arXiv preprint arXiv:2210.11470},
+  year={2022}
 }
 ```
