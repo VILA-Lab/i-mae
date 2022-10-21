@@ -2,7 +2,7 @@
 [Kevin Zhang*](https://kzyz.netlify.com/), [Zhiqiang Shen*](http://zhiqiangshen.com/)
 
 
-[`Website`](https://zhiqiangshen.com/projects/i-mae/) | [`arXiv`](https://arxiv.org/abs/) | [`BibTeX`](#citation)
+[`Website`](https://zhiqiangshen.com/projects/i-mae/) | [`arXiv`](https://arxiv.org/abs/2210.11470) | [`BibTeX`](#citation)
 
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/vision-learning-acceleration-lab/i-mae/blob/main/i-MAE_demo.ipynb)  
@@ -21,7 +21,7 @@ We provide a PyTorch/GPU based implementation of our technical report [i-MAE: Ar
 
 ### Visualization demo
 
-Please visit our interactive demo at [website](https://zhiqiangshen.com/projects/i-mae/), or run our visualization demo with [Colab notebook](https://colab.research.google.com/github/vision-learning-acceleration-lab/i-mae/blob/main/i-MAE_demo.ipynb) (no GPU needed):
+Please visit our interactive demo on our [website](https://zhiqiangshen.com/projects/i-mae/), or run our visualization demo with [Colab notebook](https://colab.research.google.com/github/vision-learning-acceleration-lab/i-mae/blob/main/i-MAE_demo.ipynb) (no GPU needed):
 
 ### Acknowledgement
 
@@ -36,10 +36,14 @@ This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for detai
 If you find this repository helpful, please consider citing our work:
 
 ```
-@article{zhang2022i-mae,
-  author    = {Zhang, Kevin and Shen, Zhiqiang},
-  title     = {i-MAE: Are Latent Representations in Masked Autoencoders Linearly Separable?},
-  journal   = {arxiv preprint},
-  year      = {2022},
+@misc{https://doi.org/10.48550/arxiv.2210.11470,
+  doi = {10.48550/ARXIV.2210.11470},
+  url = {https://arxiv.org/abs/2210.11470},
+  author = {Zhang, Kevin and Shen, Zhiqiang},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV), Artificial Intelligence (cs.AI), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {i-MAE: Are Latent Representations in Masked Autoencoders Linearly Separable?},
+  publisher = {arXiv},
+  year = {2022},
+  copyright = {Creative Commons Attribution 4.0 International}
 }
 ```
