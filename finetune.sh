@@ -1,0 +1,12 @@
+python main_finetune.py \
+    --batch_size 256 \
+    --model vit_base_patch16 \
+    --finetune mae_finetuned_vit_base.pth \
+    --epochs 20 \
+    --warmup_epochs 2 \
+    --blr 5e-5 --layer_decay 0.65 \
+    --weight_decay 0.05 --drop_path 0.1 --reprob 0.25 --mixup 0.8 --cutmix 1.0 \
+    --dist_eval \
+    --data_path ../imagenet \
+    --output_dir vanilla_vis \
+    --log_dir vanilla_vis

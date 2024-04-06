@@ -1,12 +1,9 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 # --------------------------------------------------------
 # References:
-# timm: https://github.com/rwightman/pytorch-image-models/tree/master/timm
 # DeiT: https://github.com/facebookresearch/deit
+# BEiT: https://github.com/microsoft/unilm/tree/master/beit
+# Un-Mix: https://github.com/szq0214/Un-Mix
+# MAE: https://github.com/facebookresearch/mae
 # --------------------------------------------------------
 
 from functools import partial
@@ -17,7 +14,6 @@ import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block
 
 from util.pos_embed import get_2d_sincos_pos_embed
-
 
 class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
@@ -265,8 +261,154 @@ class MaskedAutoencoderViT(nn.Module):
 
 
 
+class MAEDouble(MaskedAutoencoderViT):
+    """ Masked Autoencoder with VisionTransformer backbone
+    """
+    def __init__(self, img_size=224, patch_size=16, in_chans=3,
+                 embed_dim=1024, depth=24, num_heads=16,
+                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False):
+        super().__init__(img_size, patch_size, in_chans,
+                         embed_dim, depth, num_heads,
+                 decoder_embed_dim, decoder_depth, decoder_num_heads,
+                 mlp_ratio, norm_layer, norm_pix_loss)
+
+        # --------------------------------------------------------------------------
+        # i-MAE decoder specifics
+        self.decoder_embed1 = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
+        self.decoder_embed2 = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
+
+
+    def forward_decoder(self, x, ids_restore):
+        # embed tokens
+        x1 = self.decoder_embed1(x)
+        x2 = self.decoder_embed2(x)
+
+        def dec_func(x):
+            # append mask tokens to sequence
+            mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
+            x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
+            x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+            x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
+
+            # add pos embed
+            x = x + self.decoder_pos_embed
+
+            # apply Transformer blocks
+            for blk in self.decoder_blocks:
+                x = blk(x)
+            x = self.decoder_norm(x)
+
+            # predictor projection
+            x = self.decoder_pred(x)
+
+            # remove cls token
+            x = x[:, 1:, :]
+            return x
+        x1_decoded = dec_func(x1.clone())
+        x2_decoded = dec_func(x2.clone())
+        return (x1_decoded,x2_decoded), (x1,x2)
+
+    def forward_loss(self, imgs, preds, mask, weak_idx,teach_latent,latents):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove, 
+        
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6)**.5
+        """
+        if weak_idx == 0:
+            target = self.patchify(imgs[1])
+            loss = (preds[0] - target) ** 2
+
+            target = self.patchify(imgs[2])
+            loss += (preds[1] - target) ** 2
+
+        else: # == 1
+            target = self.patchify(imgs[2])
+            loss = (preds[0] - target) ** 2
+
+            target = self.patchify(imgs[1])
+            loss += (preds[1] - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+
+        if type(teach_latent) != type(None):
+            if weak_idx == 0: #distill branch 0 to latent 0
+                loss += torch.nn.functional.mse_loss(latents[0] ,teach_latent[0])
+                loss += torch.nn.functional.mse_loss(latents[1] ,teach_latent[1])
+            elif weak_idx == 1: #distill branch 0 to latent 1
+                loss += torch.nn.functional.mse_loss(latents[0] ,teach_latent[1])
+                loss += torch.nn.functional.mse_loss(latents[1] ,teach_latent[0])
+        return loss
+
+    def forward(self, imgs, weak_idx, mask_ratio=0.75,ids_shuffle=None,ids_restore=None, teach_latent=None):
+        #samples = (mixed_images, im1,im2)
+        mixed_img = imgs[0]
+        latent, mask, ids_shuffle, ids_restore = self.forward_encoder(mixed_img, mask_ratio,ids_shuffle,ids_restore)
+        
+        preds,latents = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        loss = self.forward_loss(imgs, preds, mask, weak_idx,teach_latent,latents)
+        return loss, preds, mask
+
+
+class MAE_Teacher(MaskedAutoencoderViT):
+    """ Masked Autoencoder with VisionTransformer backbone
+    """
+    def __init__(self, img_size=224, patch_size=16, in_chans=3,
+                 embed_dim=1024, depth=24, num_heads=16,
+                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_pix_loss=False):
+        super().__init__(img_size, patch_size, in_chans,
+                         embed_dim, depth, num_heads,
+                 decoder_embed_dim, decoder_depth, decoder_num_heads,
+                 mlp_ratio, norm_layer, norm_pix_loss)
+
+    def forward_loss(self, imgs, pred, mask):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove, 
+        """
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6)**.5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        return loss
+
+    def forward(self, imgs, mask_ratio=0.75, ids_shuffle=None, ids_restore=None):
+        latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
+        pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        loss = self.forward_loss(imgs, pred, mask)
+        return loss, pred, mask
+
+
 def mae_vit_base_patch16_dec512d8b(**kwargs):
-    model = MaskedAutoencoderViT(
+    model = MAEDouble(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def tmae_vit_large_patch16_dec512d8b(**kwargs):
+    model = MAE_Teacher(
+        patch_size=16, embed_dim=1024, depth=24, num_heads=16,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def tmae_vit_base_patch16_dec512d8b(**kwargs):
+    model = MAE_Teacher(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
         decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
@@ -283,5 +425,9 @@ def mae_vit_small_patch8_dec1928b(**kwargs):
 
 # set recommended archs
 mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
+
+teacher_mae_vit_base_patch16 = tmae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
+
+teacher_mae_vit_large_patch16 = tmae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 
 mae_vit_small_patch8 = mae_vit_small_patch8_dec1928b
